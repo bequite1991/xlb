@@ -1,0 +1,56 @@
+# OS
+.DS_Store
+
+# Logs / temp
+*.log
+*.bin
+*.tar.gz
+*.zip
+*.apk
+dumpsys*.txt
+avchat_dumpsys.txt
+extracted/
+jadx_*/
+
+# Node
+node_modules/
+dist/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Android
+build/
+.gradle/
+*.iml
+local.properties
+captures/
+.externalNativeBuild
+.cxx/
+
+# Misc
+.claude/
+serial_cmds/
+apks/
+assistant_*.txt
+robotupdate_*.txt
+rx_log*.bin
+plan.md
+代办.md
+待办.md
+protocol.md
+restart.sh
+deploy.sh
+
+# Old frontend builds in backend
+backend/static/assets/
+backend/static/*.html
+
+# Large models
+*.onnx
+wpa_supplicant.conf
+xlb-robot/\024

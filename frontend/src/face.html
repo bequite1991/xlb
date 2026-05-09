@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>人脸管理 - 小萝卜</title>
+<style>
+body { background: #0f0f1a; color: #fff; font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 16px; }
+.container { max-width: 480px; margin: 0 auto; }
+header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+header h1 { font-size: 18px; margin: 0; }
+header a { color: rgba(255,255,255,0.5); text-decoration: none; font-size: 14px; }
+.face-card { background: rgba(255,255,255,0.06); border-radius: 12px; padding: 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; }
+.face-avatar { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg,#667eea,#764ba2); display: flex; align-items: center; justify-content: center; font-size: 20px; }
+.face-info { flex: 1; }
+.face-name { font-weight: 600; font-size: 15px; }
+.face-relation { color: rgba(255,255,255,0.5); font-size: 12px; margin-top: 2px; }
+.face-delete { background: rgba(231,76,60,0.2); color: #e74c3c; border: none; border-radius: 8px; padding: 6px 12px; font-size: 12px; cursor: pointer; }
+.form-group { margin-bottom: 12px; }
+.form-group label { display: block; font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 4px; }
+.form-group input { width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 10px 12px; color: #fff; font-size: 14px; }
+.btn-primary { width: 100%; background: linear-gradient(135deg,#667eea,#764ba2); border: none; border-radius: 10px; padding: 12px; color: #fff; font-size: 15px; cursor: pointer; margin-top: 8px; }
+.btn-secondary { width: 100%; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 12px; color: #fff; font-size: 15px; cursor: pointer; margin-top: 8px; }
+.section-title { font-size: 14px; color: rgba(255,255,255,0.5); margin: 20px 0 10px; }
+.empty-tip { text-align: center; color: rgba(255,255,255,0.3); padding: 30px 0; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+<h1>人脸管理</h1>
+<a href="index.html">返回</a>
+</header>
+
+<div class="section-title">已注册人脸（最多 5 人）</div>
+<div id="face-list"></div>
+
+<div class="section-title">注册新人脸</div>
+<div class="form-group">
+<label>称呼</label>
+<input type="text" id="face-name" placeholder="如：爸爸、小明" maxlength="20" />
+</div>
+<div class="form-group">
+<label>关系（可选）</label>
+<input type="text" id="face-relation" placeholder="如：父亲、朋友" maxlength="20" />
+</div>
+<div class="form-group">
+<label>人脸照片</label>
+<input type="file" id="face-image" accept="image/*" />
+</div>
+<button class="btn-primary" onclick="registerFace()">注册</button>
+<button class="btn-secondary" onclick="triggerRobotEnroll()">通过机器人摄像头注册</button>
+</div>
+
+<script>
+const API_BASE = window.location.origin;
+const DEVICE_ID = localStorage.getItem('device_id') || 'a4a38f538c58bfa2';
+
+async function loadFaces() {
+    const container = document.getElementById('face-list');
+    container.innerHTML = '<div class="empty-tip">加载中...</div>';
+    try {
+        const res = await fetch(`${API_BASE}/api/face/list/${DEVICE_ID}`);
+        const data = await res.json();
+        if (!data.faces || data.faces.length === 0) {
+            container.innerHTML = '<div class="empty-tip">暂无注册人脸</div>';
+            return;
+        }
+        let html = '';
+        data.faces.forEach(f => {
+            html += `<div class="face-card">
+                <div class="face-avatar">${f.name.charAt(0)}</div>
+                <div class="face-info">
+                    <div class="face-name">${escapeHtml(f.name)}</div>
+                    <div class="face-relation">${escapeHtml(f.relation || '未设置关系')}</div>
+                </div>
+                <button class="face-delete" onclick="deleteFace('${escapeHtml(f.name)}')">删除</button>
+            </div>`;
+        });
+        container.innerHTML = html;
+    } catch (e) {
+        container.innerHTML = '<div class="empty-tip">加载失败</div>';
+    }
+}
+
+async function registerFace() {
+    const name = document.getElementById('face-name').value.trim();
+    const relation = document.getElementById('face-relation').value.trim();
+    const fileInput = document.getElementById('face-image');
+    if (!name) return alert('请输入称呼');
+    if (!fileInput.files[0]) return alert('请选择人脸照片');
+
+    const form = new FormData();
+    form.append('image', fileInput.files[0]);
+    form.append('device_id', DEVICE_ID);
+    form.append('name', name);
+    form.append('relation', relation);
+
+    try {
+        const res = await fetch(`${API_BASE}/api/face/register`, { method: 'POST', body: form });
+        const data = await res.json();
+        if (data.success) {
+            alert('注册成功');
+            document.getElementById('face-name').value = '';
+            document.getElementById('face-relation').value = '';
+            fileInput.value = '';
+            loadFaces();
+        } else {
+            alert(data.error || '注册失败');
+        }
+    } catch (e) {
+        alert('网络错误');
+    }
+}
+
+async function deleteFace(name) {
+    if (!confirm(`确定删除 "${name}" 的人脸记录吗？`)) return;
+    try {
+        const form = new FormData();
+        form.append('device_id', DEVICE_ID);
+        form.append('name', name);
+        const res = await fetch(`${API_BASE}/api/face/delete`, { method: 'POST', body: form });
+        const data = await res.json();
+        if (data.success) {
+            loadFaces();
+        } else {
+            alert(data.error || '删除失败');
+        }
+    } catch (e) {
+        alert('网络错误');
+    }
+}
+
+async function triggerRobotEnroll() {
+    const name = document.getElementById('face-name').value.trim();
+    const relation = document.getElementById('face-relation').value.trim();
+    if (!name) return alert('请先输入称呼');
+    try {
+        await fetch(`${API_BASE}/api/robot/${DEVICE_ID}/cmd`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'enroll', name: name, relation: relation })
+        });
+        alert('已发送注册指令到机器人，请让机器人看着你');
+    } catch (e) {
+        alert('下发失败');
+    }
+}
+
+function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+loadFaces();
+</script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>小萝卜对话</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <div id="chat-app">
+        <div class="chat-header">
+            <button class="btn-back" onclick="location.href='./index.html'">&#9664; 返回</button>
+            <h2>小萝卜</h2>
+            <span class="chat-status" id="chat-status">在线</span>
+        </div>
+
+        <div class="chat-messages" id="chat-messages"></div>
+
+        <div class="chat-input-area">
+            <button class="btn-camera" id="btn-camera" onclick="document.getElementById('vision-file').click()">&#128247;</button>
+            <input type="file" id="vision-file" accept="image/*" capture="environment" style="display:none" onchange="handleVisionUpload(this)">
+            <input type="text" id="chat-input" placeholder="说点什么..." onkeydown="if(event.key==='Enter') sendChatText()">
+            <button class="btn-send" onclick="sendChatText()">发送</button>
+        </div>
+    </div>
+
+    <div id="vision-preview-modal" class="modal" onclick="hideVisionPreviewIfOutside(event)">
+        <div class="modal-content">
+            <h3>发送图片</h3>
+            <img id="vision-preview-img" style="width:100%;border-radius:8px;margin-bottom:12px;" alt="预览">
+            <input type="text" id="vision-preview-prompt" placeholder="让机器人看什么（默认：你看到了什么？）">
+            <div class="modal-btns">
+                <button onclick="hideVisionPreview()">取消</button>
+                <button class="btn-primary" onclick="confirmVisionUpload()">发送</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="./chat.js"></script>
+</body>
+</html>

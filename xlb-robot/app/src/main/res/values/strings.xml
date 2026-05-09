@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_service_description">小萝卜 OTA 静默安装辅助服务。开启后可在无屏幕情况下自动完成应用升级安装。</string>
+</resources>

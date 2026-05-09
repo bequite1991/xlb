@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>小萝卜控制台</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <div id="app">
+        <div class="header">
+            <h1>小萝卜</h1>
+            <div class="status">
+                <span id="online-dot" class="dot offline"></span>
+                <span id="online-text">离线</span>
+                <span id="battery">--%</span>
+                <span id="charging" class="charging-status"></span>
+                <span id="volume-header" class="volume-header">&#128266;--%</span>
+            </div>
+            <div class="version-info" id="version-info" style="display:none">
+                <span id="version-current">v--</span>
+                <span id="version-arrow">→</span>
+                <span id="version-latest">v--</span>
+            </div>
+            <div class="ota-progress" id="ota-progress" style="display:none">
+                <span class="ota-spinner"></span>
+                <span id="ota-progress-text">正在检查更新...</span>
+            </div>
+        </div>
+
+        <div class="voice-state-bar" id="voice-state-bar">
+            <span class="voice-icon" id="voice-icon">&#127908;</span>
+            <span class="voice-text" id="voice-text">待机中</span>
+        </div>
+
+        <div class="scroll-content">
+            <div class="panel">
+                <div class="dpad">
+                    <button class="btn-dir" onpointerdown="move('forward')">&#9650;</button>
+                    <div class="dpad-mid">
+                        <button class="btn-dir" onpointerdown="move('left')">&#9664;</button>
+                        <button class="btn-stop" onpointerdown="stop()">&#9632;</button>
+                        <button class="btn-dir" onpointerdown="move('right')">&#9654;</button>
+                    </div>
+                    <button class="btn-dir" onpointerdown="move('backward')">&#9660;</button>
+                </div>
+            </div>
+
+            <div class="moves">
+                <button class="btn-move" onpointerdown="move('left')">原地左转</button>
+                <button class="btn-move" onpointerdown="move('right')">原地右转</button>
+                <button class="btn-move" onpointerdown="move('circle_left')">绕左圈</button>
+                <button class="btn-move" onpointerdown="move('circle_right')">绕右圈</button>
+            </div>
+
+            <div class="emotion-panel">
+                <div class="emotion-toggle" onclick="toggleEmotions()">
+                    <span>表情控制</span>
+                    <span class="emotion-arrow" id="emotion-arrow">&#9654;</span>
+                </div>
+                <div class="emotion-content" id="emotion-content" style="display:none">
+                    <div class="emotion-group">
+                        <div class="emotion-group-title">常用情绪</div>
+                        <div class="emotions">
+                            <div class="emo-item" onpointerdown="sendEmotion(0x08)"><button class="btn-emo">&#128522;</button><span>开心</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x0A)"><button class="btn-emo">&#128516;</button><span>微笑</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x01)"><button class="btn-emo">&#128542;</button><span>难过</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x0B)"><button class="btn-emo">&#128546;</button><span>哭泣</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x17)"><button class="btn-emo">&#128514;</button><span>尴尬</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x1B)"><button class="btn-emo">&#128544;</button><span>生气</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x0C)"><button class="btn-emo">&#128558;</button><span>吃惊</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x1D)"><button class="btn-emo">&#128521;</button><span>眨眼</span></div>
+                        </div>
+                    </div>
+                    <div class="emotion-group">
+                        <div class="emotion-group-title">状态动作</div>
+                        <div class="emotions">
+                            <div class="emo-item" onpointerdown="sendEmotion(0x09)"><button class="btn-emo">&#128528;</button><span>空闲</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x06)"><button class="btn-emo">&#128566;</button><span>发呆</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x1C)"><button class="btn-emo">&#127881;</button><span>欢乐</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x20)"><button class="btn-emo">&#128540;</button><span>逗趣</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x21)"><button class="btn-emo">&#128591;</button><span>抱歉</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x25)"><button class="btn-emo">&#128564;</button><span>睡觉</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x1A)"><button class="btn-emo">&#128164;</button><span>待机</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x2C)"><button class="btn-emo">&#128066;</button><span>倾听</span></div>
+                        </div>
+                    </div>
+                    <div class="emotion-group">
+                        <div class="emotion-group-title">方向系统</div>
+                        <div class="emotions">
+                            <div class="emo-item" onpointerdown="sendEmotion(0x02)"><button class="btn-emo">&#128073;</button><span>向右看</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x04)"><button class="btn-emo">&#128064;</button><span>看右</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x05)"><button class="btn-emo">&#128065;</button><span>看左</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x00)"><button class="btn-emo">&#128295;</button><span>黑屏</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x03)"><button class="btn-emo">&#10060;</button><span>错误</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x07)"><button class="btn-emo">&#127925;</button><span>音乐</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x1E)"><button class="btn-emo">&#128083;</button><span>眼镜</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x24)"><button class="btn-emo">&#128584;</button><span>忽略</span></div>
+                        </div>
+                    </div>
+                    <div class="emotion-group">
+                        <div class="emotion-group-title">网络连接</div>
+                        <div class="emotions">
+                            <div class="emo-item" onpointerdown="sendEmotion(0x0D)"><button class="btn-emo">&#128246;</button><span>WiFi</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x0E)"><button class="btn-emo">&#128280;</button><span>蓝牙</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x0F)"><button class="btn-emo">&#128225;</button><span>NLU</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x10)"><button class="btn-emo">&#128268;</button><span>插头</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x11)"><button class="btn-emo">&#128279;</button><span>连接中</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x12)"><button class="btn-emo">&#9989;</button><span>已连接</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x28)"><button class="btn-emo">&#128161;</button><span>灯光测试</span></div>
+                        </div>
+                    </div>
+                    <div class="emotion-group">
+                        <div class="emotion-group-title">电池电量</div>
+                        <div class="emotions">
+                            <div class="emo-item" onpointerdown="sendEmotion(0x13)"><button class="btn-emo">&#128267;</button><span>满电</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x14)"><button class="btn-emo">&#128267;</button><span>半电</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x15)"><button class="btn-emo">&#9888;</button><span>低电</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x16)"><button class="btn-emo">&#128267;</button><span>空电</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x26)"><button class="btn-emo">&#9889;</button><span>充电</span></div>
+                            <div class="emo-item" onpointerdown="sendEmotion(0x27)"><button class="btn-emo">&#128680;</button><span>充电故障</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button id="btn-chat" class="btn-action" onclick="triggerChat()">语音对话</button>
+                <button class="btn-action btn-chat" onclick="location.href='./chat.html'">文字对话 / 拍照</button>
+                <button class="btn-action" onclick="location.href='./face.html'">人脸管理</button>
+                <button class="btn-action" onclick="showWifi()">Wi-Fi 配网</button>
+                <button class="btn-action" onclick="triggerOta()">检查更新</button>
+                <button class="btn-action" style="background: linear-gradient(145deg, #c0392b, #a93226);" onclick="rebootRobot()">重启机器人</button>
+            </div>
+
+            <div class="event-panel">
+                <div class="event-header" onclick="toggleEvents()">
+                    <span>最近事件</span>
+                    <div class="event-header-right">
+                        <a href="./stats.html" class="link-stats" onclick="event.stopPropagation()">性能统计 →</a>
+                        <span class="event-arrow" id="event-arrow">&#9654;</span>
+                    </div>
+                </div>
+                <div class="event-content" id="event-content" style="display:block">
+                    <div id="event-list" class="event-list">
+                        <div class="event-empty">暂无事件</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="extra-actions">
+                <button id="btn-follow" class="btn-action btn-toggle" onclick="toggleFollow()">跟随我</button>
+                <div class="volume-panel">
+                    <div class="volume-info">
+                        <span id="volume-icon">&#128266;</span>
+                        <span id="volume-text">--%</span>
+                    </div>
+                    <div class="volume-buttons">
+                        <button class="btn-volume" onclick="setVolume('down')">音量 -</button>
+                        <button class="btn-volume" onclick="setVolume('up')">音量 +</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="wifi-modal" class="modal" onclick="hideWifiIfOutside(event)">
+        <div class="modal-content">
+            <h3>Wi-Fi 配网</h3>
+            <div class="wifi-scan-row">
+                <mdui-select id="wifi-select" onchange="onWifiSelectChange()" class="wifi-select" placeholder="正在扫描 Wi-Fi...">
+                </mdui-select>
+                <button class="btn-small" onclick="refreshWifiScan()">&#128260;</button>
+            </div>
+            <input type="text" id="wifi-ssid-custom" placeholder="自定义 Wi-Fi 名称" style="display:none">
+            <input type="password" id="wifi-password" placeholder="密码">
+            <div class="modal-btns">
+                <button onclick="hideWifi()">取消</button>
+                <button id="wifi-save-btn" class="btn-primary" onclick="saveWifi()">连接</button>
+            </div>
+            <div id="wifi-loading" class="wifi-loading" style="display:none">
+                <span class="wifi-spinner"></span>
+                <span>正在下发配置...</span>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="./app.js"></script>
+</body>
+</html>
