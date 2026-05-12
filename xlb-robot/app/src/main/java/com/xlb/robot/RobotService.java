@@ -141,7 +141,7 @@ public class RobotService extends Service {
         handler = new Handler(Looper.getMainLooper());
         httpClient = new OkHttpClient.Builder()
                 .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
-                .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                .readTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
                 .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
                 .build();
 
@@ -1470,11 +1470,16 @@ public class RobotService extends Service {
             @Override
             public void onFailure(Call call, java.io.IOException e) {
                 Log.e(TAG, "Download failed: " + e);
+                prefs.edit().putBoolean(PREF_OTA_IN_PROGRESS, false).apply();
             }
 
             @Override
             public void onResponse(Call call, Response response) throws java.io.IOException {
-                if (!response.isSuccessful()) return;
+                if (!response.isSuccessful()) {
+                    Log.e(TAG, "Download server error: " + response.code());
+                    prefs.edit().putBoolean(PREF_OTA_IN_PROGRESS, false).apply();
+                    return;
+                }
                 try (java.io.InputStream is = response.body().byteStream();
                      FileOutputStream fos = new FileOutputStream(apkFile)) {
                     byte[] buf = new byte[8192];
@@ -1492,6 +1497,7 @@ public class RobotService extends Service {
                     }
                 } catch (Exception e) {
                     Log.e(TAG, "Download error: " + e);
+                    prefs.edit().putBoolean(PREF_OTA_IN_PROGRESS, false).apply();
                 }
             }
         });
