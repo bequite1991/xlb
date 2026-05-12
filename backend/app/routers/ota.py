@@ -7,7 +7,7 @@ from app.config import PUBLIC_HOST
 router = APIRouter(prefix="/api/ota", tags=["OTA"])
 
 APK_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "static")
-LATEST_VERSION_CODE = 64  # 手动递增此值后上传新 APK
+LATEST_VERSION_CODE = 65  # 手动递增此值后上传新 APK
 
 
 @router.get("/check")
