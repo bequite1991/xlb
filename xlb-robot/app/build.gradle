@@ -10,7 +10,7 @@ android {
         applicationId "com.xlb.robot"
         minSdk 22
         targetSdk 22
-        versionCode 67
+        versionCode 68
         versionName "1.0.0"
     }
 

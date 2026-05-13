@@ -86,7 +86,7 @@ fi
 
 echo "  -> 验证版本号..."
 LATEST=$(curl -s "http://127.0.0.1:8000/api/ota/check?version_code=0&device_id=deploy" | python3 -c "import sys,json; print(json.load(sys.stdin).get('latest_version','unknown'))" 2>/dev/null || echo "unknown")
-if [ "$LATEST" = "67" ]; then
+if [ "$LATEST" = "68" ]; then
     echo "部署成功，最新版本: $LATEST"
 else
     echo "警告: API 返回版本号为 $LATEST，请检查"
