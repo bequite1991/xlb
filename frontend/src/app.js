@@ -217,7 +217,7 @@ async function pollStatus() {
     if (pollStatusPending) return;
     pollStatusPending = true;
     try {
-        const res = await fetch(`${API_BASE}/api/robot/${DEVICE_ID}/status`);
+        const res = await fetch(`${API_BASE}/api/robot/${DEVICE_ID}/status`, { cache: 'no-store' });
         const data = await res.json();
         const dot = document.getElementById('online-dot');
         const text = document.getElementById('online-text');
@@ -312,7 +312,8 @@ function renderEventList(events) {
         speak_done: '说完',
         speak_error: '错误',
     };
-    const alarmMap = { 0x11: '低电', 0x22: '空电', 0x44: '障碍' };
+    const alarmMap = { 0x11: '低电', 0x22: '空电', 0x33: '悬崖', 0x44: '障碍' };
+    const touchMap = { 0x11: '音量+', 0x22: '音量-', 0x33: '电源单击', 0x44: '关机', 0x55: '未知按钮0x55', 0x66: '摸头', 0x77: '挠耳', 0x88: '挠耳', 0x99: '功能切换', 0xBB: '长按热点' };
     let html = '';
     // show newest first
     for (let i = events.length - 1; i >= 0; i--) {
@@ -322,7 +323,9 @@ function renderEventList(events) {
         let label = typeMap[ev.type] || ev.type;
         let detail = '';
         if (ev.type === 'alarm' && ev.alarm_type != null) {
-            detail = alarmMap[ev.alarm_type] || '0x' + ev.alarm_type.toString(16);
+            detail = ev.alarm_name || alarmMap[ev.alarm_type] || '0x' + ev.alarm_type.toString(16);
+        } else if (ev.type === 'touch' && ev.key != null) {
+            detail = ev.key_name || touchMap[ev.key] || '0x' + ev.key.toString(16);
         } else if (ev.type === 'ota' && ev.state) {
             detail = ev.state;
         }
@@ -374,11 +377,11 @@ async function pollVersion() {
     if (pollVersionPending) return;
     pollVersionPending = true;
     try {
-        const statusRes = await fetch(`${API_BASE}/api/robot/${DEVICE_ID}/status`);
+        const statusRes = await fetch(`${API_BASE}/api/robot/${DEVICE_ID}/status`, { cache: 'no-store' });
         const statusData = await statusRes.json();
         const currentVersion = statusData.version_code || null;
 
-        const otaRes = await fetch(`${API_BASE}/api/ota/check?version_code=${currentVersion || 0}&device_id=${DEVICE_ID}`);
+        const otaRes = await fetch(`${API_BASE}/api/ota/check?version_code=${currentVersion || 0}&device_id=${DEVICE_ID}`, { cache: 'no-store' });
         const otaData = await otaRes.json();
         const latestVersion = otaData.latest_version || currentVersion;
 

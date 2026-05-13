@@ -44,6 +44,11 @@ public class SerialManager {
     private ReadThread readThread;
     private ByteBuffer readBuffer = ByteBuffer.allocate(2048);
     private volatile OnFrameListener listener;
+    private volatile boolean threeWheelMode = false;
+
+    public void setThreeWheelMode(boolean enabled) {
+        this.threeWheelMode = enabled;
+    }
 
     public interface OnFrameListener {
         void onBattery(int level);
@@ -54,7 +59,20 @@ public class SerialManager {
 
     public static final int ALARM_LOW_BATTERY = 0x11;
     public static final int ALARM_EMPTY_BATTERY = 0x22;
+    public static final int ALARM_CLIFF = 0x33;
     public static final int ALARM_OBSTACLE = 0x44;
+
+    // 触摸事件（与老 APP 兼容）
+    public static final int TOUCH_VOLUME_UP = 0x11;
+    public static final int TOUCH_VOLUME_DOWN = 0x22;
+    public static final int TOUCH_POWER_SINGLE = 0x33;
+    public static final int TOUCH_POWER_OFF = 0x44;
+    public static final int TOUCH_POWER_DOUBLE = 0x55;
+    public static final int TOUCH_HEAD = 0x66;
+    public static final int TOUCH_EAR = 0x77;
+    public static final int TOUCH_EAR_ALT = 0x88;
+    public static final int TOUCH_FUNC_SWITCH = 0x99;
+    public static final int TOUCH_LONG_PRESS_HOTSPOT = 0xBB;
 
     public void setListener(OnFrameListener l) {
         this.listener = l;
@@ -90,7 +108,16 @@ public class SerialManager {
     }
 
     public synchronized void sendMove(int leftDir, int leftSpeed, int rightDir, int rightSpeed, int duration) {
-        int b = (leftDir << 7) | (encodeSpeed(leftSpeed) << 5) | (rightDir << 3) | (encodeSpeed(rightSpeed) << 1);
+        int b;
+        if (threeWheelMode) {
+            // 老APP三轮模式 SportAction 协议：bit7=leftDir, bits6-4=leftSpeed, bit3=rightDir, bits2-0=rightSpeed
+            // 速度直接使用 0-15（超过 7 时 bit7/bit3 会被速度 bit3 覆盖，与老APP行为一致）
+            int ls = Math.max(0, Math.min(15, leftSpeed));
+            int rs = Math.max(0, Math.min(15, rightSpeed));
+            b = (leftDir << 7) | (ls << 4) | (rightDir << 3) | rs;
+        } else {
+            b = (leftDir << 7) | (encodeSpeed(leftSpeed) << 5) | (rightDir << 3) | (encodeSpeed(rightSpeed) << 1);
+        }
         byte[] data = new byte[]{(byte) b, (byte) duration};
         write(buildFrame((byte) 0xEF, data));
     }
@@ -118,22 +145,30 @@ public class SerialManager {
 
     // 大半径左转：两轮同向前进，左轮速度约为右轮一半
     public synchronized void sendCircleLeft(int speed, int duration) {
-        // 内侧轮速度不能为1，否则 encodeSpeed(1)=0 导致该轮无速度，
-        // circle 退化成单轮转动，产生不可控的前进位移。
-        int left = Math.max(2, speed / 2);
-        int right = speed;
-        int b = (1 << 7) | (encodeSpeed(left) << 5) | (1 << 3) | (encodeSpeed(right) << 1);
-        byte[] data = new byte[]{(byte) b, (byte) duration};
-        write(buildFrame((byte) 0xEF, data));
+        if (threeWheelMode) {
+            sendMove(1, Math.max(1, speed / 2), 1, speed, duration);
+        } else {
+            // 内侧轮速度不能为1，否则 encodeSpeed(1)=0 导致该轮无速度，
+            // circle 退化成单轮转动，产生不可控的前进位移。
+            int left = Math.max(2, speed / 2);
+            int right = speed;
+            int b = (1 << 7) | (encodeSpeed(left) << 5) | (1 << 3) | (encodeSpeed(right) << 1);
+            byte[] data = new byte[]{(byte) b, (byte) duration};
+            write(buildFrame((byte) 0xEF, data));
+        }
     }
 
     // 大半径右转：两轮同向前进，右轮速度约为左轮一半
     public synchronized void sendCircleRight(int speed, int duration) {
-        int left = speed;
-        int right = Math.max(2, speed / 2);
-        int b = (1 << 7) | (encodeSpeed(left) << 5) | (1 << 3) | (encodeSpeed(right) << 1);
-        byte[] data = new byte[]{(byte) b, (byte) duration};
-        write(buildFrame((byte) 0xEF, data));
+        if (threeWheelMode) {
+            sendMove(1, speed, 1, Math.max(1, speed / 2), duration);
+        } else {
+            int left = speed;
+            int right = Math.max(2, speed / 2);
+            int b = (1 << 7) | (encodeSpeed(left) << 5) | (1 << 3) | (encodeSpeed(right) << 1);
+            byte[] data = new byte[]{(byte) b, (byte) duration};
+            write(buildFrame((byte) 0xEF, data));
+        }
     }
 
     public synchronized void sendEmotion(int emotion) {

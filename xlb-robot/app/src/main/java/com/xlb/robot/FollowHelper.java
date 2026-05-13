@@ -40,7 +40,7 @@ public class FollowHelper {
     // 4=circle_left, 5=circle_right，连续同方向会产生累加转角效果
     private static final int[] SCAN_PATTERN = {4, 4, 5, 5, 4, 4, 4, 5, 5, 5, 4, 5};
     private int scanIdx = 0;
-    private static final int SCAN_SPEED = 3;
+    private static final int SCAN_SPEED = 9;
 
     // 软件人脸检测降级路径
     private BlazeFaceDetector blazeFaceDetector;
@@ -355,10 +355,14 @@ public class FollowHelper {
 
         // 靠近逻辑：你坐着不动，机器人主动来找你。
         // 人脸偏离大 -> circle 边转边靠近；偏离小 -> 直接前进；极近 -> 停。
-        int circleSpeed = 4;
+        int circleSpeed = 12;
         int circleDuration = 1; // ~100ms
 
         boolean hasFace = faces != null && faces.length > 0;
+
+        if (!hasFace && now - lastFaceTime > FACE_LOSS_GRACE_MS) {
+            closeState = false;
+        }
 
         if (hasFace) {
             lastFaceTime = now;
@@ -401,13 +405,13 @@ public class FollowHelper {
             if (frame != null) {
                 // 取消之前的延迟扫描，给软件检测让路
                 handler.removeCallbacks(delayedScanRunnable);
-                // 为本次检测单独拷贝一帧，避免与后续定时器提交的新任务竞争 frameCopy
-                final byte[] frameToProcess = new byte[Math.min(frame.length, frameCopy.length)];
-                System.arraycopy(frame, 0, frameToProcess, 0, frameToProcess.length);
+                // 拷贝到复用缓冲区；blazeHandler 单线程 + softwareDetectRunning 保护，不会并发竞争
+                final int copyLen = Math.min(frame.length, frameCopy.length);
+                System.arraycopy(frame, 0, frameCopy, 0, copyLen);
                 blazeHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        Camera.Face softFace = blazeFaceDetector.detect(frameToProcess, PREVIEW_WIDTH, PREVIEW_HEIGHT);
+                        Camera.Face softFace = blazeFaceDetector.detect(frameCopy, PREVIEW_WIDTH, PREVIEW_HEIGHT);
                         softwareDetectRunning = false;
                         if (softFace != null) {
                             handler.post(new Runnable() {
@@ -438,7 +442,6 @@ public class FollowHelper {
         if (now - lastFaceTime > FACE_LOSS_GRACE_MS) {
             if (lastDir != 0) {
                 lastDir = 0;
-                scanIdx = 0;
                 lastControlTime = now;
                 serialManager.sendStop();
                 Log.d(TAG, "Follow: stop (face lost)");
@@ -483,16 +486,16 @@ public class FollowHelper {
         int forwardSpeed;
         int forwardDuration;
         if (maxArea < 100000) {
-            forwardSpeed = 5;   // 远（>1.5m）
+            forwardSpeed = 15;   // 远（>1.5m）
             forwardDuration = 3; // ~300ms
         } else if (maxArea < 300000) {
-            forwardSpeed = 4;   // 中（80cm-1.5m）
+            forwardSpeed = 12;   // 中（80cm-1.5m）
             forwardDuration = 2; // ~200ms
         } else if (maxArea < STOP_AREA_THRESHOLD) {
-            forwardSpeed = 3;   // 近（30-80cm）
+            forwardSpeed = 9;   // 近（30-80cm）
             forwardDuration = 2; // ~200ms
         } else {
-            forwardSpeed = 2;   // 极近（<30cm）
+            forwardSpeed = 6;   // 极近（<30cm）
             forwardDuration = 1; // ~100ms
         }
 

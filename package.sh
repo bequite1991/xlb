@@ -51,6 +51,18 @@ echo "  -> 同步前端静态文件..."
 rm -rf /home/ubuntu/xlb/backend/static/*
 cp -r backend/static/* /home/ubuntu/xlb/backend/static/
 
+echo "  -> 更新环境变量..."
+ENV_FILE="/home/ubuntu/xlb/backend/.env"
+if [ -f "$ENV_FILE" ]; then
+    if ! grep -q "^KIMI_API_KEY=" "$ENV_FILE"; then
+        echo "KIMI_API_KEY=sk-kimi-x289lIJnnhUykleRGg1HSQZk8rvCaYxZL77lFU2vyv7Fd9y6iXPNKkO6nVgpFNjx" >> "$ENV_FILE"
+    else
+        sed -i 's|^KIMI_API_KEY=.*|KIMI_API_KEY=sk-kimi-x289lIJnnhUykleRGg1HSQZk8rvCaYxZL77lFU2vyv7Fd9y6iXPNKkO6nVgpFNjx|' "$ENV_FILE"
+    fi
+else
+    echo "KIMI_API_KEY=sk-kimi-x289lIJnnhUykleRGg1HSQZk8rvCaYxZL77lFU2vyv7Fd9y6iXPNKkO6nVgpFNjx" > "$ENV_FILE"
+fi
+
 echo "  -> 清理 Python 缓存..."
 find /home/ubuntu/xlb/backend -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 
@@ -74,7 +86,7 @@ fi
 
 echo "  -> 验证版本号..."
 LATEST=$(curl -s "http://127.0.0.1:8000/api/ota/check?version_code=0&device_id=deploy" | python3 -c "import sys,json; print(json.load(sys.stdin).get('latest_version','unknown'))" 2>/dev/null || echo "unknown")
-if [ "$LATEST" = "61" ]; then
+if [ "$LATEST" = "67" ]; then
     echo "部署成功，最新版本: $LATEST"
 else
     echo "警告: API 返回版本号为 $LATEST，请检查"

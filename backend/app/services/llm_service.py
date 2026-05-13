@@ -2,7 +2,7 @@ import json
 
 import httpx
 
-from app.config import MINIMAX_API_KEY
+from app.config import KIMI_API_KEY
 from app.utils import mqtt_client
 
 # 复用 AsyncClient 避免每次创建连接池开销
@@ -140,8 +140,8 @@ SYSTEM_PROMPT = (
 
 
 async def chat(user_text: str, device_id: str = None, history=None, memories=None) -> tuple:
-    if not MINIMAX_API_KEY:
-        return "后端还没配置 minimax key，这是占位回复。", []
+    if not KIMI_API_KEY:
+        return "后端还没配置 kimi key，这是占位回复。", []
 
     # 前置关键词路由：用户明显在问"看到了什么"或让拍照时，直接调用 take_picture
     vision_keywords = ["看到", "看见", "拍照", "拍张", "这是什么", "看看", "图里", "图片", "照片", "什么颜色", "几个人", "在哪", "长什么样"]
@@ -155,9 +155,9 @@ async def chat(user_text: str, device_id: str = None, history=None, memories=Non
             })
         return "让我看看！", [{"type": "vision", "prompt": prompt}]
 
-    url = "https://api.minimax.chat/v1/text/chatcompletion_v2"
+    url = "https://api.moonshot.cn/v1/chat/completions"
     headers = {
-        "Authorization": f"Bearer {MINIMAX_API_KEY}",
+        "Authorization": f"Bearer {KIMI_API_KEY}",
         "Content-Type": "application/json",
     }
 
@@ -174,7 +174,7 @@ async def chat(user_text: str, device_id: str = None, history=None, memories=Non
     actions = []
 
     resp = await _llm_client.post(url, headers=headers, json={
-        "model": "MiniMax-M2.1",
+        "model": "kimi-k2-6",
         "messages": messages,
         "tools": TOOLS,
         "tool_choice": "auto",
@@ -291,7 +291,7 @@ async def chat(user_text: str, device_id: str = None, history=None, memories=Non
 
         # 执行工具后，再调一次 LLM 生成自然确认回复（禁用工具调用）
         resp2 = await _llm_client.post(url, headers=headers, json={
-            "model": "MiniMax-M2.1",
+            "model": "kimi-k2-6",
             "messages": messages,
             "tool_choice": "none",
         })
@@ -302,10 +302,9 @@ async def chat(user_text: str, device_id: str = None, history=None, memories=Non
         message2 = choice2.get("message", {})
         content = message2.get("content", "")
 
-        # 清理 MiniMax 可能输出的 tool_call XML 标签
+        # 清理可能残留的 XML 标签
         if content:
             import re
-            content = re.sub(r"<minimax:tool_call>.*?</minimax:tool_call>", "", content, flags=re.DOTALL).strip()
             content = re.sub(r"<invoke[^>]*>.*?</invoke>", "", content, flags=re.DOTALL).strip()
 
         # 兜底：如果二次调用无内容或只剩余 XML 残渣，使用更自然的 fallback 文案

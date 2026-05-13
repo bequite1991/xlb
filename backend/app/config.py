@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 MINIMAX_API_KEY = os.getenv("MINIMAX_API_KEY", "")
+KIMI_API_KEY = os.getenv("KIMI_API_KEY", "")
 QWEN_VL_API_KEY = os.getenv("QWEN_VL_API_KEY", "")
 PUBLIC_HOST = os.getenv("PUBLIC_HOST", "http://localhost:8000")
 TTS_OUTPUT_DIR = "/tmp/xlb_tts"

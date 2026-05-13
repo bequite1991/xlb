@@ -94,7 +94,12 @@ public class RobotService extends Service {
     private static final long MULTI_TURN_TIMEOUT_MS = 8000;
     private volatile boolean wasFollowingBeforeChat = false;
     private long lastObstacleAlarmTime = 0;
-    private static final long OBSTACLE_DEBOUNCE_MS = 8000;
+    private static final long OBSTACLE_DEBOUNCE_MS = 15000;
+    // 传感器健康度：15 秒内超过 3 次有效报警认为传感器误报
+    private static final long OBSTACLE_HEALTH_WINDOW_MS = 15000;
+    private static final int OBSTACLE_HEALTH_MAX_ALARMS = 3;
+    private long obstacleHealthWindowStart = 0;
+    private int obstacleHealthAlarmCount = 0;
 
     // 主动心跳互动
     private static final long IDLE_ACTION_DELAY_MS = 90000; // 90秒无交互后触发
@@ -318,18 +323,52 @@ public class RobotService extends Service {
 
             @Override
             public void onTouch(int key) {
-                Log.i(TAG, "Touch=" + String.format("%02X", key));
+                Log.i(TAG, "Touch=" + String.format("%02X", key) + " " + touchKeyName(key));
                 if (mqttManager != null) {
-                    mqttManager.publish("event", "{\"type\":\"touch\",\"key\":" + key + "}");
+                    mqttManager.publish("event", "{\"type\":\"touch\",\"key\":" + key + ",\"key_name\":\"" + touchKeyName(key) + "\"}");
                 }
-                handleTouchEvent();
+                switch (key & 0xFF) {
+                    case SerialManager.TOUCH_VOLUME_UP:
+                        adjustVolume("up");
+                        break;
+                    case SerialManager.TOUCH_VOLUME_DOWN:
+                        adjustVolume("down");
+                        break;
+                    case SerialManager.TOUCH_POWER_SINGLE:
+                        handlePowerKeyShortPress();
+                        break;
+                    case SerialManager.TOUCH_POWER_DOUBLE:
+                        Log.i(TAG, "Touch: double-click power button");
+                        speakText("蓝牙已断开");
+                        break;
+                    case SerialManager.TOUCH_POWER_OFF:
+                        Log.i(TAG, "Touch: shutdown event");
+                        break;
+                    case SerialManager.TOUCH_HEAD:
+                        handleTouchEvent();
+                        break;
+                    case SerialManager.TOUCH_EAR:
+                    case SerialManager.TOUCH_EAR_ALT:
+                        Log.i(TAG, "Touch: ear tickle");
+                        if (serialManager != null) serialManager.sendEmotion(SerialManager.EMOTION_HAPPY);
+                        break;
+                    case SerialManager.TOUCH_FUNC_SWITCH:
+                        Log.i(TAG, "Touch: function switch");
+                        break;
+                    case SerialManager.TOUCH_LONG_PRESS_HOTSPOT:
+                        Log.i(TAG, "Touch: long-press hotspot switch");
+                        break;
+                    default:
+                        handleTouchEvent();
+                        break;
+                }
             }
 
             @Override
             public void onAlarm(int type) {
-                Log.i(TAG, "Alarm=" + String.format("%02X", type));
+                Log.i(TAG, "Alarm=" + String.format("%02X", type) + " " + alarmTypeName(type));
                 if (mqttManager != null) {
-                    mqttManager.publish("event", "{\"type\":\"alarm\",\"alarm_type\":" + type + "}");
+                    mqttManager.publish("event", "{\"type\":\"alarm\",\"alarm_type\":" + type + ",\"alarm_name\":\"" + alarmTypeName(type) + "\"}");
                 }
                 handleAlarmEvent(type);
             }
@@ -351,11 +390,12 @@ public class RobotService extends Service {
                     Log.i(TAG, "Sent MCU launch command (delayed)");
                 }
             }, 800);
-            // 使用两轮模式：单轮转动位移比三轮 circle 更小
+            // 使用三轮模式（老APP SportAction 协议）
             handler.postDelayed(() -> {
                 if (serialManager != null) {
-                    serialManager.sendMotionSwitch(0);
-                    Log.i(TAG, "Sent TWO_WHEEL mode command");
+                    serialManager.setThreeWheelMode(true);
+                    serialManager.sendMotionSwitch(1);
+                    Log.i(TAG, "Sent THREE_WHEEL mode command");
                 }
             }, 1800);
             // MCU启动成功后显示待机表情
@@ -540,6 +580,32 @@ public class RobotService extends Service {
             "" + name + "，我可想你了！",
         };
         return greetings[random.nextInt(greetings.length)];
+    }
+
+    private String touchKeyName(int key) {
+        switch (key & 0xFF) {
+            case SerialManager.TOUCH_VOLUME_UP: return "volume_up";
+            case SerialManager.TOUCH_VOLUME_DOWN: return "volume_down";
+            case SerialManager.TOUCH_POWER_SINGLE: return "power_single";
+            case SerialManager.TOUCH_POWER_OFF: return "power_off";
+            case SerialManager.TOUCH_POWER_DOUBLE: return "unknown_btn_0x55";
+            case SerialManager.TOUCH_HEAD: return "head";
+            case SerialManager.TOUCH_EAR: return "ear";
+            case SerialManager.TOUCH_EAR_ALT: return "ear_alt";
+            case SerialManager.TOUCH_FUNC_SWITCH: return "func_switch";
+            case SerialManager.TOUCH_LONG_PRESS_HOTSPOT: return "long_press_hotspot";
+            default: return "unknown_0x" + Integer.toHexString(key & 0xFF);
+        }
+    }
+
+    private String alarmTypeName(int type) {
+        switch (type & 0xFF) {
+            case SerialManager.ALARM_LOW_BATTERY: return "low_battery";
+            case SerialManager.ALARM_EMPTY_BATTERY: return "empty_battery";
+            case SerialManager.ALARM_CLIFF: return "cliff";
+            case SerialManager.ALARM_OBSTACLE: return "obstacle";
+            default: return "unknown_0x" + Integer.toHexString(type & 0xFF);
+        }
     }
 
     private void scheduleIdleAction() {
@@ -1115,12 +1181,29 @@ public class RobotService extends Service {
             Log.d(TAG, "Alarm while speaking/listening");
         }
         switch (type) {
+            case SerialManager.ALARM_CLIFF:
+                fileLog("ALARM_CLIFF");
+                Log.i(TAG, "Alarm: cliff detected");
+                break;
             case SerialManager.ALARM_OBSTACLE:
                 fileLog("ALARM_OBSTACLE");
                 Log.i(TAG, "Alarm: obstacle detected");
                 long now = System.currentTimeMillis();
                 if (now - lastObstacleAlarmTime < OBSTACLE_DEBOUNCE_MS) {
                     Log.d(TAG, "Obstacle alarm debounced, ignore");
+                    break;
+                }
+                // 传感器健康度检测：短时间内频繁报警视为误报
+                if (obstacleHealthWindowStart == 0 || now - obstacleHealthWindowStart > OBSTACLE_HEALTH_WINDOW_MS) {
+                    obstacleHealthWindowStart = now;
+                    obstacleHealthAlarmCount = 1;
+                } else {
+                    obstacleHealthAlarmCount++;
+                }
+                if (obstacleHealthAlarmCount > OBSTACLE_HEALTH_MAX_ALARMS) {
+                    Log.w(TAG, "Obstacle sensor appears faulty, stopping follow");
+                    if (followHelper != null) followHelper.stop();
+                    if (!busy) speakText("传感器好像出问题了，请检查一下");
                     break;
                 }
                 lastObstacleAlarmTime = now;
@@ -1138,6 +1221,9 @@ public class RobotService extends Service {
                         public void onAvoidanceComplete() {
                             Log.i(TAG, "Obstacle avoidance complete");
                             lastObstacleAlarmTime = System.currentTimeMillis();
+                            // 成功避障后重置健康度窗口
+                            obstacleHealthWindowStart = 0;
+                            obstacleHealthAlarmCount = 0;
                             if (wasFollowing && followHelper != null) {
                                 followHelper.resume();
                             } else {
