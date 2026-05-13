@@ -311,6 +311,7 @@ function renderEventList(events) {
         volume: '音量',
         speak_done: '说完',
         speak_error: '错误',
+        wifi_scan: 'WiFi扫描',
     };
     const alarmMap = { 0x11: '低电', 0x22: '空电', 0x33: '悬崖', 0x44: '障碍' };
     const touchMap = { 0x11: '音量+', 0x22: '音量-', 0x33: '电源单击', 0x44: '关机', 0x55: '未知按钮0x55', 0x66: '摸头', 0x77: '挠耳', 0x88: '挠耳', 0x99: '功能切换', 0xBB: '长按热点' };

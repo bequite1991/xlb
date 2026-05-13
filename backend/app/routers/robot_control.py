@@ -46,5 +46,5 @@ def serve_tts_audio(filename: str):
         return {"detail": "not found"}
     path = os.path.join(TTS_OUTPUT_DIR, filename)
     if os.path.exists(path) and os.path.commonpath([path, TTS_OUTPUT_DIR]) == TTS_OUTPUT_DIR:
-        return FileResponse(path, media_type="audio/mp4")
+        return FileResponse(path, media_type="audio/mpeg")
     return {"detail": "not found"}

@@ -146,7 +146,7 @@ async function confirmVisionUpload() {
 
 async function pollRobotStatus() {
     try {
-        const res = await fetch(`${API_BASE}/api/robot/${DEVICE_ID}/status`);
+        const res = await fetch(`${API_BASE}/api/robot/${DEVICE_ID}/status`, { cache: 'no-store' });
         const data = await res.json();
         statusEl.textContent = data.online ? '在线' : '离线';
         statusEl.style.color = data.online ? '#2ecc71' : '#e74c3c';

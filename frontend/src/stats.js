@@ -14,7 +14,7 @@ async function loadLogs(chatType = '') {
     const url = `${API_BASE}/api/chat_logs/${DEVICE_ID}?limit=50${chatType ? '&chat_type=' + chatType : ''}`;
     document.getElementById('log-tbody').innerHTML = '<tr><td colspan="4" style="text-align:center;color:rgba(255,255,255,0.4)">加载中...</td></tr>';
     try {
-        const res = await fetch(url);
+        const res = await fetch(url, { cache: 'no-store' });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
         allLogs = data.logs || [];

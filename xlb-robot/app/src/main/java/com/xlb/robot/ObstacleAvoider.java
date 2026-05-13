@@ -17,8 +17,8 @@ public class ObstacleAvoider {
     private volatile boolean isAvoiding = false;
     private int step = 0;
 
-    // 动作参数（speed=4, duration 单位由 MCU 决定）
-    private static final int SPEED = 4;
+    // 动作参数（适配三轮模式高速范围 0-15）
+    private static final int SPEED = 12;
     private static final int BACK_DURATION = 10;   // 后退约 1s
     private static final int TURN_DURATION = 20;   // 转向约 1.5s
     private static final int FORWARD_DURATION = 20; // 前进约 1.5s

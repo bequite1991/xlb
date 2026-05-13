@@ -53,14 +53,19 @@ cp -r backend/static/* /home/ubuntu/xlb/backend/static/
 
 echo "  -> 更新环境变量..."
 ENV_FILE="/home/ubuntu/xlb/backend/.env"
-if [ -f "$ENV_FILE" ]; then
-    if ! grep -q "^KIMI_API_KEY=" "$ENV_FILE"; then
-        echo "KIMI_API_KEY=sk-kimi-x289lIJnnhUykleRGg1HSQZk8rvCaYxZL77lFU2vyv7Fd9y6iXPNKkO6nVgpFNjx" >> "$ENV_FILE"
-    else
-        sed -i 's|^KIMI_API_KEY=.*|KIMI_API_KEY=sk-kimi-x289lIJnnhUykleRGg1HSQZk8rvCaYxZL77lFU2vyv7Fd9y6iXPNKkO6nVgpFNjx|' "$ENV_FILE"
-    fi
+if [ -z "$KIMI_API_KEY" ]; then
+    echo "  -> 警告: 本地环境变量 KIMI_API_KEY 未设置，跳过同步"
 else
-    echo "KIMI_API_KEY=sk-kimi-x289lIJnnhUykleRGg1HSQZk8rvCaYxZL77lFU2vyv7Fd9y6iXPNKkO6nVgpFNjx" > "$ENV_FILE"
+    if [ -f "$ENV_FILE" ]; then
+        if ! grep -q "^KIMI_API_KEY=" "$ENV_FILE"; then
+            echo "KIMI_API_KEY=$KIMI_API_KEY" >> "$ENV_FILE"
+        else
+            sed -i "s|^KIMI_API_KEY=.*|KIMI_API_KEY=$KIMI_API_KEY|" "$ENV_FILE"
+        fi
+    else
+        echo "KIMI_API_KEY=$KIMI_API_KEY" > "$ENV_FILE"
+    fi
+    echo "  -> KIMI_API_KEY 已同步到服务器"
 fi
 
 echo "  -> 清理 Python 缓存..."
